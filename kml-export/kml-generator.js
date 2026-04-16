@@ -4,7 +4,18 @@ function buildKml(tripData) {
 
   const styleBlocks = buildStyleBlocks();
   const hotelPlacemark = tripData.hotel ? buildHotelPlacemark(tripData.hotel) : '';
-  const dayFolders = tripData.days.map(day => buildDayFolder(day, tripData.tripDates.start)).join('\n');
+
+  const days = tripData.days.slice(0, 20);
+  let dayFolders;
+  if (tripData.days.length > 10) {
+    const folders = [];
+    for (let i = 0; i < days.length; i += 2) {
+      folders.push(buildChunkedFolder(days.slice(i, i + 2), tripData.tripDates.start));
+    }
+    dayFolders = folders.join('\n');
+  } else {
+    dayFolders = days.map(day => buildDayFolder(day, tripData.tripDates.start)).join('\n');
+  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -50,6 +61,38 @@ function buildDayFolder(day, tripStartDate) {
       </Point>
     </Placemark>`;
   }).join('\n');
+
+  return `
+  <Folder>
+    <name>${escapeXml(folderName)}</name>
+    ${placemarks}
+  </Folder>`;
+}
+
+function buildChunkedFolder(days, tripStartDate) {
+  const first = days[0];
+  const last = days[days.length - 1];
+  const firstDate = formatShortDate(getDateForDay(tripStartDate, first.dayNumber));
+  const folderName = days.length === 1
+    ? `Day ${first.dayNumber} - ${firstDate}`
+    : `Day ${first.dayNumber}&${last.dayNumber} - ${firstDate} & ${formatShortDate(getDateForDay(tripStartDate, last.dayNumber))}`;
+
+  const placemarks = days.flatMap(day => day.activities.map(activity => {
+    if (!activity.lat || !activity.lng) {
+      console.warn(`Missing lat/lng for activity: ${activity.name}. Skipping.`);
+      return '';
+    }
+    const styleId = activity.type || 'default';
+    const label = activity.time ? `${activity.name} (${activity.time})` : activity.name;
+    return `
+    <Placemark>
+      <name>${escapeXml(label)}</name>
+      <styleUrl>#${styleId}</styleUrl>
+      <Point>
+        <coordinates>${activity.lng},${activity.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+  })).join('\n');
 
   return `
   <Folder>
