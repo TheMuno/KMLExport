@@ -87,6 +87,10 @@ async function handleExportMap() {
     return;
   }
 
+  if (tripData.days.length > 20) {
+    showToast('Your trip is over 20 days — only Days 1–20 will appear in Google My Maps.');
+  }
+
   // 3. Loading state
   const btn = document.getElementById('export-kml');
   btn.disabled = true;
