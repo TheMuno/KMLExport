@@ -99,8 +99,9 @@ async function handleExportMap() {
     // 5. Generate and download
     await generateAndDownloadKmz(resolvedTripData);
 
-    // 6. Success toast
-    showToast('✓ Map exported! Open on your phone with Google Maps.');
+    // 6. Open Google My Maps and prompt user to import
+    window.open('https://www.google.com/maps/d/', '_blank');
+    showToast('✓ Map downloaded! In the My Maps tab, click Create > Import to open it.');
   } catch (err) {
     console.error('KML export failed:', err);
     showToast('Something went wrong. Please try again.');
