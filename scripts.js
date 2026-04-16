@@ -88,7 +88,7 @@ async function handleExportMap() {
   }
 
   if (tripData.days.length > 20) {
-    showToast('Your trip is over 20 days — only Days 1–20 will appear in Google My Maps.');
+    showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
   }
 
   // 3. Loading state
