@@ -1,15 +1,26 @@
 const KHONSU_ORANGE_KML = 'ff3d85ff'; // #FF853D in KML AABBGGRR format
 
 const ICON_MAP = {
-  restaurant: 'http://maps.google.com/mapfiles/kml/shapes/dining.png',
-  attraction: 'http://maps.google.com/mapfiles/kml/shapes/camera.png',
-  hotel:      'http://maps.google.com/mapfiles/kml/shapes/lodging.png',
-  airport:    'http://maps.google.com/mapfiles/kml/shapes/airports.png',
-  shopping:   'http://maps.google.com/mapfiles/kml/shapes/shopping.png',
-  park:       'http://maps.google.com/mapfiles/kml/shapes/parks.png'
+  restaurant:    'icons/restaurant.png',
+  attraction:    'icons/camera.png',
+  hotel:         'icons/hotel.png',
+  airport:       'icons/airport.png',
+  shopping:      'icons/shopping-cart.png',
+  park:          'icons/outdoor_park.png',
+  amusement_park:'icons/amusement_park.png'
 };
 
-const DEFAULT_ICON = 'http://maps.google.com/mapfiles/kml/paddle/wht-blank.png';
+const ICON_FILES = [
+  'restaurant.png',
+  'camera.png',
+  'hotel.png',
+  'airport.png',
+  'shopping-cart.png',
+  'outdoor_park.png',
+  'amusement_park.png'
+];
+
+const DEFAULT_ICON = 'icons/camera.png';
 
 function getIconUrl(activityType) {
   return ICON_MAP[activityType] || DEFAULT_ICON;

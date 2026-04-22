@@ -6,8 +6,20 @@ async function generateAndDownloadKmz(tripData) {
 
   const zip = new JSZip();
   zip.file('doc.kml', kmlContent);
-  const kmzBlob = await zip.generateAsync({ type: 'blob' });
 
+  await Promise.all(
+    ICON_FILES.map(async file => {
+      try {
+        const response = await fetch(`Imgs/${file}`);
+        const blob = await response.blob();
+        zip.file(`icons/${file}`, blob);
+      } catch (err) {
+        console.warn(`Could not bundle icon: ${file}`, err);
+      }
+    })
+  );
+
+  const kmzBlob = await zip.generateAsync({ type: 'blob' });
   triggerDownload(kmzBlob, fileName);
 }
 

@@ -30,7 +30,7 @@ function buildKml(tripData) {
 }
 
 function buildStyleBlocks() {
-  const types = ['restaurant', 'attraction', 'hotel', 'airport', 'shopping', 'park', 'default'];
+  const types = ['restaurant', 'attraction', 'hotel', 'airport', 'shopping', 'park', 'amusement_park', 'default'];
   return types.map(type => `
   <Style id="${type}">
     <IconStyle>
