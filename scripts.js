@@ -198,15 +198,6 @@ async function handleExportMap() {
   }
 }
 
-function initMap() {
-  const newYork = { lat: 40.7128, lng: -74.0060 };
-  const map = new google.maps.Map(document.getElementById('map'), {
-    center: newYork,
-    zoom: 12
-  });
-}
-
-window.initMap = initMap;
 window.handleExportMap = handleExportMap;
 
 // --- Callable function wrapper ---
