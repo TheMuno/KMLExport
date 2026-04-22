@@ -206,6 +206,9 @@ function initMap() {
   });
 }
 
+window.initMap = initMap;
+window.handleExportMap = handleExportMap;
+
 // --- Callable function wrapper ---
 async function getDataById(userId) {
   const getUserData = httpsCallable(functions, "getUserData");
