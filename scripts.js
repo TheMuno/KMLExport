@@ -1,5 +1,11 @@
 let currentTrip = null;
 
+const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
+const $googleMapsBtn = document.querySelector('[data-ak="download-google-maps-btn"]');
+$googleMapsBtn.addEventListener('click', e => {
+  initTrip(userObj); 
+});
+
 function initTrip(userObj) {
   if (!userObj?.savedAttractions) {
     showToast('Please add at least one attraction to your itinerary before exporting.');
