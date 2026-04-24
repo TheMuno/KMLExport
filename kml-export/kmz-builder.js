@@ -10,7 +10,8 @@ async function generateAndDownloadKmz(tripData) {
   await Promise.all(
     ICON_FILES.map(async file => {
       try {
-        const response = await fetch(`Imgs/${file}`);
+        const cdn = 'https://cdn.jsdelivr.net/gh/TheMuno/kmlexport@latest';
+        const response = await fetch(`${cdn}/Imgs/${file}`);
         const blob = await response.blob();
         zip.file(`icons/${file}`, blob);
       } catch (err) {
