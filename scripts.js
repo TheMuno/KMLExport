@@ -76,81 +76,75 @@ async function renderData() {
   }
 
   if (!attractionLocations || typeof attractionLocations !== "object" || Object.keys(attractionLocations).length === 0) {
-    showError(`Itinerary for ${userEmail} is empty.`);
+    showError(`Please add at least one attraction to your itinerary before exporting.`);
+    return;
+  }
+
+  currentTrip = transformFirebaseData(userObj);
+
+  if (currentTrip.days.length === 0) {
+    showError(`Please add at least one attraction to your itinerary before exporting.`);
     return;
   }
 }
 
-// Mock trip data — replace with Firebase fetch when implemented
-const currentTrip = {
-  userName: localStorage['ak-tripName'] || 'User',
-  tripDates: { start: "2026-07-15", end: "2026-07-16" },
-  hotel: {
-    name: "The Lucerne Hotel",
-    lat: 40.7829,
-    lng: -73.9765
-  },
-  days: [
-    {
-      dayNumber: 1,
-      activities: [
-        {
-          name: "American Museum of Natural History",
-          type: "attraction",
-          place_id: "ChIJCXoPsPBYwokR3GcGHlKL68I",
-          lat: 40.7813,
-          lng: -73.9740,
-          time: "10:00 AM"
-        },
-        {
-          name: "Shake Shack - Upper West Side",
-          type: "restaurant",
-          place_id: "ChIJj2Mv6PBYwokRRBaOoKmHELQ",
-          lat: 40.7812,
-          lng: -73.9810,
-          time: "12:30 PM"
-        },
-        {
-          name: "Central Park",
-          type: "park",
-          place_id: "ChIJ4zGFAZpYwokRGUGph3Mf37k",
-          lat: 40.7851,
-          lng: -73.9683,
-          time: "2:00 PM"
-        }
-      ]
-    },
-    {
-      dayNumber: 2,
-      activities: [
-        {
-          name: "The Metropolitan Museum of Art",
-          type: "attraction",
-          place_id: "ChIJb8Jg9pZYwokR-qHnxoHF-tg",
-          lat: 40.7794,
-          lng: -73.9632,
-          time: "10:00 AM"
-        },
-        {
-          name: "Sarabeth's Central Park South",
-          type: "restaurant",
-          place_id: "ChIJN1t_tDeuEmsRUsoyG83frY4",
-          lat: 40.7659,
-          lng: -73.9772,
-          time: "1:00 PM"
-        },
-        {
-          name: "Fifth Avenue Shopping",
-          type: "shopping",
-          place_id: "ChIJj3jAGKtZwokRDMmJMJgBMPs",
-          lat: 40.7580,
-          lng: -73.9855,
-          time: "3:00 PM"
-        }
-      ]
+let currentTrip = null;
+
+function transformFirebaseData(userObj) {
+  const { tripName, travelDates, hotel, savedAttractions } = userObj;
+
+  const userName = tripName || 'User';
+
+  let startDate = '2026-01-01', endDate = '2026-01-02';
+  if (travelDates) {
+    const datesObj = parseJSON(travelDates);
+    const dateStr = datesObj?.dateStr || datesObj?.flatpickrDate || '';
+    if (dateStr) {
+      const parts = dateStr.split(/\s+to\s+/);
+      if (parts[0]) startDate = parts[0].trim();
+      if (parts[1]) endDate = parts[1].trim();
     }
-  ]
-};
+  }
+
+  let hotelData = null;
+  if (hotel) {
+    const h = parseJSON(hotel);
+    if (h?.displayName && h?.location?.lat && h?.location?.lng) {
+      hotelData = { name: h.displayName, lat: h.location.lat, lng: h.location.lng };
+    }
+  }
+
+  const attractions = savedAttractions ? (parseJSON(savedAttractions) || {}) : {};
+  const days = Object.entries(attractions)
+    .sort(([a], [b]) => slideNum(a) - slideNum(b))
+    .map(([, slots], i) => ({
+      dayNumber: i + 1,
+      activities: [
+        ...mapSlotActivities(slots.morning, 'Morning', 'attraction'),
+        ...mapSlotActivities(slots.afternoon, 'Afternoon', 'restaurant'),
+        ...mapSlotActivities(slots.evening, 'Evening', 'local_experience'),
+      ],
+    }))
+    .filter(day => day.activities.length > 0);
+
+  return { userName, tripDates: { start: startDate, end: endDate }, hotel: hotelData, days };
+}
+
+function slideNum(key) {
+  return parseInt(key.replace('slide', ''), 10) || 0;
+}
+
+function mapSlotActivities(slot, timeLabel, type) {
+  if (!Array.isArray(slot)) return [];
+  return slot.map(a => ({
+    name: a.displayName,
+    type,
+    place_id: a.placeId,
+    lat: a.location?.lat,
+    lng: a.location?.lng,
+    time: timeLabel,
+  }));
+}
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -162,6 +156,11 @@ function showToast(message) {
 async function handleExportMap() {
   // 1. Get trip data
   const tripData = currentTrip;
+
+  if (!tripData) {
+    showToast('Itinerary is still loading. Please wait and try again.');
+    return;
+  }
 
   // 2. Validate
   const totalActivities = tripData.days.reduce((sum, d) => sum + d.activities.length, 0);
