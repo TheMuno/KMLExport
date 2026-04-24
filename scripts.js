@@ -97,9 +97,9 @@ async function handleExportMap() {
     showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
   }
 
-  const btn = document.getElementById('export-kml');
-  btn.disabled = true;
-  btn.textContent = 'Generating map...';
+  // const btn = document.getElementById('export-kml');
+  $googleMapsBtn.disabled = true;
+  $googleMapsBtn.textContent = 'Generating map...';
 
   try {
     const resolvedTripData = await resolveAllLatLng(currentTrip);
@@ -110,8 +110,8 @@ async function handleExportMap() {
     console.error('KML export failed:', err);
     showToast('Something went wrong. Please try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = '📍 Export Map';
+    $googleMapsBtn.disabled = false;
+    $googleMapsBtn.textContent = '📍 Export Map';
   }
 }
 
