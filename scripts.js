@@ -1,12 +1,13 @@
 let currentTrip = null;
 
-const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
 const $googleMapsBtn = document.querySelector('[data-ak="download-google-maps-btn"]');
 $googleMapsBtn.addEventListener('click', e => {
-  initTrip(userObj); 
+  e.preventDefault();
+  const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
+  if (initTrip(userObj)) handleExportMap();
 });
 
-function initTrip(userObj) {
+function initTrip(userObj) {  
   if (!userObj?.savedAttractions) {
     showToast('Please add at least one attraction to your itinerary before exporting.');
     return;
@@ -23,6 +24,7 @@ function initTrip(userObj) {
   }
 
   currentTrip = transformFirebaseData(userObj);
+  return true;
 }
 
 function transformFirebaseData(userObj) {
@@ -106,21 +108,23 @@ async function handleExportMap() {
     await generateAndDownloadKmz(resolvedTripData);
     window.open('https://www.google.com/maps/d/', '_blank');
     showToast('✓ Map downloaded! In the My Maps tab, click Create > Import to open it.');
-  } catch (err) {
+  } 
+  catch (err) {
     console.error('KML export failed:', err);
     showToast('Something went wrong. Please try again.');
-  } finally {
+  } 
+  finally {
     $googleMapsBtn.disabled = false;
     $googleMapsBtn.textContent = '📍 Export Map';
   }
 }
 
-function showToast(message) {
+/*function showToast(message) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.style.display = 'block';
   setTimeout(() => { toast.style.display = 'none'; }, 4000);
-}
+}*/
 
 function parseJSON(jsonStr) {
   try {
@@ -130,5 +134,88 @@ function parseJSON(jsonStr) {
   }
 }
 
-window.initTrip = initTrip;
-window.handleExportMap = handleExportMap;
+// window.initTrip = initTrip;
+// window.handleExportMap = handleExportMap;
+
+// ✅ SweetAlert2 Modals and Toasts
+function showModal({ title = '', text = '', icon = 'info', confirmText = 'OK', timer = null }) {
+  Swal.fire({
+    title,
+    text,
+    icon,
+    confirmButtonText: confirmText,
+    background: '#fff',
+    color: '#333',
+    confirmButtonColor: '#FF4500', // brand 
+    showClass: {
+      popup: 'animate__animated animate__fadeInDown'
+    },
+    hideClass: {
+      popup: 'animate__animated animate__fadeOutUp'
+    },
+    timer,
+    timerProgressBar: !!timer
+  });
+}
+
+function showSuccess(message) {
+  showModal({
+    title: 'Success!',
+    text: message,
+    icon: 'success',
+    confirmText: 'Great!'
+  });
+}
+
+function showWarning(message) {
+  showModal({
+    title: 'Notice',
+    text: message,
+    icon: 'warning',
+    confirmText: 'OK'
+  });
+}
+
+function showError(title, message) {
+  showModal({
+    title,
+    text: message,
+    icon: 'error',
+    confirmText: 'Close'
+  });
+}
+
+// 💬 Toast notifications
+function showToast(message, icon = 'info') {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon,
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    background: '#1e1e1e',
+    color: '#fff',
+  });
+}
+
+// 🔄 Loading Indicator
+function showLoading(message = 'Checking availability...') {
+  Swal.fire({
+    title: message,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => {
+      Swal.showLoading();
+    },
+    background: '#fff',
+    color: '#333',
+  });
+}
+
+// ✅ Close loading state
+function closeLoading() {
+  Swal.close();
+}
+
