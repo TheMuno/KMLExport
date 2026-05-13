@@ -15,7 +15,7 @@ function initTrip(userObj) {
 
   const attractions = parseJSON(userObj.savedAttractions) || {};
   const hasAnyActivity = Object.values(attractions).some(slots =>
-    [slots.attractions, slots.restaurants, slots.notes].some(s => Array.isArray(s) && s.length > 0)
+    [slots.attractions || slots.morning, slots.restaurants || slots.afternoon, slots.notes || slots.evening].some(s => Array.isArray(s) && s.length > 0)
   );
 
   if (!hasAnyActivity) {
@@ -73,9 +73,9 @@ function transformFirebaseData(userObj) {
     .map(([, slots], i) => ({
       dayNumber: i + 1,
       activities: [
-        ...mapSlotActivities(slots.attractions, 'Morning', 'attraction'),
-        ...mapSlotActivities(slots.restaurants, 'Afternoon', 'restaurant'),
-        ...mapSlotActivities(slots.notes, 'Evening', 'local_experience'),
+        ...mapSlotActivities(slots.attractions || slots.morning, 'Morning', 'attraction'),
+        ...mapSlotActivities(slots.restaurants || slots.afternoon, 'Afternoon', 'restaurant'),
+        ...mapSlotActivities(slots.notes || slots.evening, 'Evening', 'local_experience'),
       ],
     }))
     .filter(day => day.activities.length > 0);
