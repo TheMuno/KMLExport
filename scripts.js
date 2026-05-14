@@ -1,7 +1,7 @@
 let currentTrip = null;
 
 const $googleMapsBtn = document.querySelector('[data-ak="download-google-maps-btn"]');
-$googleMapsBtn.addEventListener('click', e => {
+$googleMapsBtn?.addEventListener('click', e => {
   e.preventDefault();
   const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
   if (initTrip(userObj)) handleExportMap();
