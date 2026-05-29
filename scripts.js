@@ -117,9 +117,9 @@
       showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
     }
 
-    const originalText = $activeBtn.textContent;
+    const originalHTML = $activeBtn.innerHTML;
     $activeBtn.disabled = true;
-    $activeBtn.textContent = 'Generating map...';
+    $activeBtn.innerHTML = '<span class="ak-pdf-btn-loading"><span class="ak-pdf-spinner"></span>Creating Map...</span>';
 
     try {
       const resolvedTripData = await resolveAllLatLng(currentTrip);
@@ -131,7 +131,7 @@
       showToast('Something went wrong. Please try again.');
     } finally {
       $activeBtn.disabled = false;
-      $activeBtn.textContent = originalText;
+      $activeBtn.innerHTML = originalHTML;
     }
   }
 
