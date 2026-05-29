@@ -137,12 +137,22 @@
 
   window.akWireGoogleMapsBtn = function ($buttons) {
     if (!$buttons || !$buttons.length) return;
+    let isLoading = false;
+
     $buttons.forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault();
+        if (isLoading) return;
         $activeBtn = btn;
         const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
-        if (initTrip(userObj)) handleExportMap();
+        if (initTrip(userObj)) {
+          isLoading = true;
+          $buttons.forEach(b => { b.disabled = true; });
+          handleExportMap().finally(() => {
+            isLoading = false;
+            $buttons.forEach(b => { b.disabled = false; });
+          });
+        }
       });
     });
   };
