@@ -1,154 +1,152 @@
-let currentTrip = null;
+(function () {
+  let currentTrip = null;
+  let $activeBtn = null;
 
-const $googleMapsBtn = document.querySelector('[data-ak="download-google-maps-btn"]');
-$googleMapsBtn?.addEventListener('click', e => {
-  e.preventDefault();
-  const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
-  if (initTrip(userObj)) handleExportMap();
-});
+  function initTrip(userObj) {
+    if (!userObj?.savedAttractions) {
+      showToast('Please add at least one attraction to your itinerary before exporting.');
+      return;
+    }
 
-function initTrip(userObj) {  
-  if (!userObj?.savedAttractions) {
-    showToast('Please add at least one attraction to your itinerary before exporting.');
-    return;
+    const attractions = parseJSON(userObj.savedAttractions) || {};
+    const hasAnyActivity = Object.values(attractions).some(slots =>
+      [slots.attractions || slots.morning, slots.restaurants || slots.afternoon, slots.notes || slots.evening].some(s => Array.isArray(s) && s.length > 0)
+    );
+
+    if (!hasAnyActivity) {
+      showToast('Please add at least one attraction to your itinerary before exporting.');
+      return;
+    }
+
+    currentTrip = transformFirebaseData(userObj);
+    return true;
   }
 
-  const attractions = parseJSON(userObj.savedAttractions) || {};
-  const hasAnyActivity = Object.values(attractions).some(slots =>
-    [slots.attractions || slots.morning, slots.restaurants || slots.afternoon, slots.notes || slots.evening].some(s => Array.isArray(s) && s.length > 0)
-  );
+  function transformFirebaseData(userObj) {
+    const { tripName, travelDates, hotel, arrivalAirport, departureAirport, savedAttractions } = userObj;
 
-  if (!hasAnyActivity) {
-    showToast('Please add at least one attraction to your itinerary before exporting.');
-    return;
+    const userName = tripName || 'User';
+
+    let startDate = '2026-01-01', endDate = '2026-01-02';
+    if (travelDates) {
+      const datesObj = parseJSON(travelDates);
+      const dateStr = datesObj?.dateStr || datesObj?.flatpickrDate || '';
+      if (dateStr) {
+        const parts = dateStr.split(/\s+to\s+/);
+        if (parts[0]) startDate = parts[0].trim();
+        if (parts[1]) endDate = parts[1].trim();
+      }
+    }
+
+    let hotelData = null,
+        arrivalAirportData = null,
+        departureAirportData = null;
+    if (hotel) {
+      const h = parseJSON(hotel);
+      if (h?.displayName && h?.location?.lat && h?.location?.lng) {
+        hotelData = { name: h.displayName, lat: h.location.lat, lng: h.location.lng };
+      }
+    }
+
+    if (arrivalAirport) {
+      const a = parseJSON(arrivalAirport);
+      if (a?.displayName && a?.location?.lat && a?.location?.lng) {
+        arrivalAirportData = { name: a.displayName, lat: a.location.lat, lng: a.location.lng };
+      }
+    }
+
+    if (departureAirport) {
+      const a = parseJSON(departureAirport);
+      if (a?.displayName && a?.location?.lat && a?.location?.lng) {
+        departureAirportData = { name: a.displayName, lat: a.location.lat, lng: a.location.lng };
+      }
+    }
+
+    const attractions = parseJSON(savedAttractions) || {};
+    const days = Object.entries(attractions)
+      .sort(([a], [b]) => slideNum(a) - slideNum(b))
+      .map(([, slots], i) => ({
+        dayNumber: i + 1,
+        activities: [
+          ...mapSlotActivities(slots.attractions || slots.morning, 'Morning', 'attraction'),
+          ...mapSlotActivities(slots.restaurants || slots.afternoon, 'Afternoon', 'restaurant'),
+          ...mapSlotActivities(slots.notes || slots.evening, 'Evening', 'local_experience'),
+        ],
+      }))
+      .filter(day => day.activities.length > 0);
+
+    return {
+      userName,
+      tripDates: { start: startDate, end: endDate },
+      hotel: hotelData,
+      arrivalAirport: arrivalAirportData,
+      departureAirport: departureAirportData,
+      days,
+    };
   }
 
-  currentTrip = transformFirebaseData(userObj);
-  return true;
-}
+  function slideNum(key) {
+    return parseInt(key.replace('slide', ''), 10) || 0;
+  }
 
-function transformFirebaseData(userObj) {
-  const { tripName, travelDates, hotel, arrivalAirport, departureAirport, savedAttractions } = userObj;
+  function mapSlotActivities(slot, timeLabel, type) {
+    if (!Array.isArray(slot)) return [];
+    return slot.map(a => ({
+      name: a.displayName,
+      type,
+      place_id: a.placeId,
+      lat: a.location?.lat,
+      lng: a.location?.lng,
+      time: timeLabel,
+    }));
+  }
 
-  const userName = tripName || 'User';
+  async function handleExportMap() {
+    if (!currentTrip) {
+      showToast('No itinerary loaded yet.');
+      return;
+    }
 
-  let startDate = '2026-01-01', endDate = '2026-01-02';
-  if (travelDates) {
-    const datesObj = parseJSON(travelDates);
-    const dateStr = datesObj?.dateStr || datesObj?.flatpickrDate || '';
-    if (dateStr) {
-      const parts = dateStr.split(/\s+to\s+/);
-      if (parts[0]) startDate = parts[0].trim();
-      if (parts[1]) endDate = parts[1].trim();
+    const totalActivities = currentTrip.days.reduce((sum, d) => sum + d.activities.length, 0);
+    if (totalActivities === 0) {
+      showToast('Add activities to your itinerary before exporting.');
+      return;
+    }
+
+    if (currentTrip.days.length > 20) {
+      showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
+    }
+
+    const originalText = $activeBtn.textContent;
+    $activeBtn.disabled = true;
+    $activeBtn.textContent = 'Generating map...';
+
+    try {
+      const resolvedTripData = await resolveAllLatLng(currentTrip);
+      await generateAndDownloadKmz(resolvedTripData);
+      window.open('https://www.google.com/maps/d/', '_blank');
+      showToast('✓ Map downloaded! In the My Maps tab, click Create > Import to open it.');
+    } catch (err) {
+      console.error('KML export failed:', err);
+      showToast('Something went wrong. Please try again.');
+    } finally {
+      $activeBtn.disabled = false;
+      $activeBtn.textContent = originalText;
     }
   }
 
-  let hotelData = null, 
-      arrivalAirportData = null,
-      departureAirportData = null;
-  if (hotel) {
-    const h = parseJSON(hotel);
-    if (h?.displayName && h?.location?.lat && h?.location?.lng) {
-      hotelData = { name: h.displayName, lat: h.location.lat, lng: h.location.lng };
-    }
-  }
-
-  if (arrivalAirport) {
-    const a = parseJSON(arrivalAirport);
-    if (a?.displayName && a?.location?.lat && a?.location?.lng) {
-      arrivalAirportData = { name: a.displayName, lat: a.location.lat, lng: a.location.lng };
-    }
-  }
-
-  if (departureAirport) {
-    const a = parseJSON(departureAirport);
-    if (a?.displayName && a?.location?.lat && a?.location?.lng) {
-      departureAirportData = { name: a.displayName, lat: a.location.lat, lng: a.location.lng };
-    }
-  }
-
-  const attractions = parseJSON(savedAttractions) || {};
-  const days = Object.entries(attractions)
-    .sort(([a], [b]) => slideNum(a) - slideNum(b))
-    .map(([, slots], i) => ({
-      dayNumber: i + 1,
-      activities: [
-        ...mapSlotActivities(slots.attractions || slots.morning, 'Morning', 'attraction'),
-        ...mapSlotActivities(slots.restaurants || slots.afternoon, 'Afternoon', 'restaurant'),
-        ...mapSlotActivities(slots.notes || slots.evening, 'Evening', 'local_experience'),
-      ],
-    }))
-    .filter(day => day.activities.length > 0);
-
-  return { 
-    userName, 
-    tripDates: { start: startDate, end: endDate }, 
-    hotel: hotelData, 
-    arrivalAirport: arrivalAirportData, 
-    departureAirport: departureAirportData, 
-    days, 
+  window.akWireGoogleMapsBtn = function ($buttons) {
+    if (!$buttons || !$buttons.length) return;
+    $buttons.forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        $activeBtn = btn;
+        const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
+        if (initTrip(userObj)) handleExportMap();
+      });
+    });
   };
-}
-
-function slideNum(key) {
-  return parseInt(key.replace('slide', ''), 10) || 0;
-}
-
-function mapSlotActivities(slot, timeLabel, type) {
-  if (!Array.isArray(slot)) return [];
-  return slot.map(a => ({
-    name: a.displayName,
-    type,
-    place_id: a.placeId,
-    lat: a.location?.lat,
-    lng: a.location?.lng,
-    time: timeLabel,
-  }));
-}
-
-async function handleExportMap() {
-  if (!currentTrip) {
-    showToast('No itinerary loaded yet.');
-    return;
-  }
-
-  const totalActivities = currentTrip.days.reduce((sum, d) => sum + d.activities.length, 0);
-  if (totalActivities === 0) {
-    showToast('Add activities to your itinerary before exporting.');
-    return;
-  }
-
-  if (currentTrip.days.length > 20) {
-    showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
-  }
-
-  const originalText = $googleMapsBtn.textContent;
-  // const btn = document.getElementById('export-kml');
-  $googleMapsBtn.disabled = true;
-  $googleMapsBtn.textContent = 'Generating map...';
-
-  try {
-    const resolvedTripData = await resolveAllLatLng(currentTrip);
-    await generateAndDownloadKmz(resolvedTripData);
-    window.open('https://www.google.com/maps/d/', '_blank');
-    showToast('✓ Map downloaded! In the My Maps tab, click Create > Import to open it.');
-  } 
-  catch (err) {
-    console.error('KML export failed:', err);
-    showToast('Something went wrong. Please try again.');
-  } 
-  finally {
-    $googleMapsBtn.disabled = false;
-    $googleMapsBtn.textContent = originalText;
-  }
-}
-
-/*function showToast(message) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, 4000);
-}*/
+})();
 
 function parseJSON(jsonStr) {
   try {
@@ -157,9 +155,6 @@ function parseJSON(jsonStr) {
     return null;
   }
 }
-
-// window.initTrip = initTrip;
-// window.handleExportMap = handleExportMap;
 
 // ✅ SweetAlert2 Modals and Toasts
 function showModal({ title = '', text = '', icon = 'info', confirmText = 'OK', timer = null }) {
@@ -170,7 +165,7 @@ function showModal({ title = '', text = '', icon = 'info', confirmText = 'OK', t
     confirmButtonText: confirmText,
     background: '#fff',
     color: '#333',
-    confirmButtonColor: '#FF4500', // brand 
+    confirmButtonColor: '#FF4500', // brand
     showClass: {
       popup: 'animate__animated animate__fadeInDown'
     },
@@ -242,4 +237,3 @@ function showLoading(message = 'Checking availability...') {
 function closeLoading() {
   Swal.close();
 }
-
