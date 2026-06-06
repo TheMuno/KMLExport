@@ -128,8 +128,7 @@
     try {
       const resolvedTripData = await resolveAllLatLng(currentTrip);
       await generateAndDownloadKmz(resolvedTripData);
-      window.open('https://www.google.com/maps/d/', '_blank');
-      showToast('✓ Map downloaded! In the My Maps tab, click Create > Import to open it.');
+      showToast('✓ Map downloaded! Import it at google.com/maps/d/ via Create > Import.');
     } catch (err) {
       console.error('KML export failed:', err);
       showToast('Something went wrong. Please try again.');
