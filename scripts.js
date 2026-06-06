@@ -89,10 +89,14 @@
     return parseInt(key.replace('slide', ''), 10) || 0;
   }
 
+  function stripTimeTag(name) {
+    return String(name || '').replace(/\s*\((morning|afternoon|evening)\)\s*$/i, '').trim();
+  }
+
   function mapSlotActivities(slot, timeLabel, type) {
     if (!Array.isArray(slot)) return [];
     return slot.map(a => ({
-      name: a.displayName,
+      name: stripTimeTag(a.displayName),
       type,
       place_id: a.placeId,
       lat: a.location?.lat,
