@@ -144,6 +144,7 @@
 
     $buttons.forEach(btn => {
       btn.addEventListener('click', e => {
+        if (btn.classList.contains('is_mobile_only')) return;
         e.preventDefault();
         if (isLoading) return;
         $activeBtn = btn;
