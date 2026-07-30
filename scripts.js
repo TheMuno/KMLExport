@@ -170,25 +170,9 @@ function parseJSON(jsonStr) {
   }
 }
 
-// ✅ SweetAlert2 Modals and Toasts
-function showModal({ title = '', text = '', icon = 'info', confirmText = 'OK', timer = null }) {
-  Swal.fire({
-    title,
-    text,
-    icon,
-    confirmButtonText: confirmText,
-    background: '#fff',
-    color: '#333',
-    confirmButtonColor: '#FF4500', // brand
-    showClass: {
-      popup: 'animate__animated animate__fadeInDown'
-    },
-    hideClass: {
-      popup: 'animate__animated animate__fadeOutUp'
-    },
-    timer,
-    timerProgressBar: !!timer
-  });
+// ✅ Alertify Modals and Toasts
+function showModal({ title = '', text = '', icon = 'info', confirmText = 'OK' }) {
+  alertify.alert(title, text, () => {}).set('label', confirmText);
 }
 
 function showSuccess(message) {
@@ -220,34 +204,44 @@ function showError(title, message) {
 
 // 💬 Toast notifications
 function showToast(message, icon = 'info') {
-  Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon,
-    title: message,
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-    background: '#1e1e1e',
-    color: '#fff',
-  });
+  const notify = { success: alertify.success, error: alertify.error, warning: alertify.warning }[icon] || alertify.message;
+  notify.call(alertify, message, 3);
 }
 
 // 🔄 Loading Indicator
+function injectAlertifyLoadingStyle() {
+  if (document.getElementById('ak-alertify-loading-style')) return;
+  const style = document.createElement('style');
+  style.id = 'ak-alertify-loading-style';
+  style.textContent = `
+    @keyframes ak-alertify-spin { to { transform: rotate(360deg); } }
+    body.ak-alertify-loading-active .ajs-footer { display: none; }
+    body.ak-alertify-loading-active .ajs-dialog .ajs-message::before {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 8px;
+      vertical-align: middle;
+      border: 2px solid #e5e7eb;
+      border-top-color: #111;
+      border-radius: 50%;
+      animation: ak-alertify-spin 0.7s linear infinite;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+let $loadingDialog = null;
 function showLoading(message = 'Checking availability...') {
-  Swal.fire({
-    title: message,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    didOpen: () => {
-      Swal.showLoading();
-    },
-    background: '#fff',
-    color: '#333',
-  });
+  injectAlertifyLoadingStyle();
+  document.body.classList.add('ak-alertify-loading-active');
+  $loadingDialog = alertify.alert(message).set({ closable: false, movable: false, resizable: false });
 }
 
 // ✅ Close loading state
 function closeLoading() {
-  Swal.close();
+  $loadingDialog?.close();
+  $loadingDialog = null;
+  document.body.classList.remove('ak-alertify-loading-active');
 }
