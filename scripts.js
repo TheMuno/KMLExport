@@ -148,7 +148,17 @@
         e.preventDefault();
         if (isLoading) return;
         $activeBtn = btn;
-        const userObj = parseJSON(localStorage['ak-user-db-object'] || '{}');
+        // 'ak-user-db-object' is only ever populated by the public itinerary-list
+        // share page — on this itinerary-maker flow the same fields live under
+        // their own keys (mirrors build-itinerary.js's saveAttractionsDB()).
+        const userObj = {
+          tripName: localStorage['ak-user-name'] || '',
+          travelDates: localStorage['ak-travel-days'] || '',
+          hotel: localStorage['ak-hotel'] || '',
+          arrivalAirport: localStorage['ak-arrival-airport'] || '',
+          departureAirport: localStorage['ak-departure-airport'] || '',
+          savedAttractions: localStorage['ak-attractions-saved'] || '',
+        };
         if (initTrip(userObj)) {
           isLoading = true;
           $buttons.forEach(b => { b.disabled = true; });
