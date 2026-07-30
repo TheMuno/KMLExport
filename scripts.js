@@ -2,6 +2,34 @@
   let currentTrip = null;
   let $activeBtn = null;
 
+  // Shared with download-guide.js/get-guide.js/stripe-purchase.js — guarded by
+  // the same style id so whichever script runs first wins and the rest no-op.
+  function injectPdfSpinnerStyle() {
+    if (document.getElementById('ak-pdf-spinner-style')) return;
+    const style = document.createElement('style');
+    style.id = 'ak-pdf-spinner-style';
+    style.textContent = `
+      @keyframes ak-pdf-spin { to { transform: rotate(360deg); } }
+      .ak-pdf-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: ak-pdf-spin 0.7s linear infinite;
+        opacity: 0.8;
+        flex-shrink: 0;
+      }
+      .ak-pdf-btn-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function initTrip(userObj) {
     if (!userObj?.savedAttractions) {
       showToast('Please add at least one attraction to your itinerary before exporting.');
@@ -105,6 +133,15 @@
     }));
   }
 
+  // [data-ak="download-google-maps-btn"] is a Webflow component wrapper
+  // (.btn_main_wrap carries the button's background/border) around a text
+  // label ([data-ak="popup-action-label"]) — swapping the whole button's
+  // innerHTML wipes .btn_main_wrap out, leaving a bare spinner+text with no
+  // button chrome. Swap just the label instead so the chrome stays intact.
+  function getLabelEl(btn) {
+    return btn.querySelector('[data-ak="popup-action-label"]') || btn;
+  }
+
   async function handleExportMap() {
     if (!currentTrip) {
       showToast('No itinerary loaded yet.');
@@ -121,9 +158,13 @@
       showToast('Your trip is over 20 days — Google My Maps has a 10 layer limit, so only Days 1–20 will appear.');
     }
 
-    const originalHTML = $activeBtn.innerHTML;
+    injectPdfSpinnerStyle();
+
+    const $label = getLabelEl($activeBtn);
+    const originalHTML = $label.innerHTML;
     $activeBtn.disabled = true;
-    $activeBtn.innerHTML = '<span class="ak-pdf-btn-loading"><span class="ak-pdf-spinner"></span>Creating Map...</span>';
+    $activeBtn.style.minWidth = `${$activeBtn.getBoundingClientRect().width}px`;
+    $label.innerHTML = '<span class="ak-pdf-btn-loading"><span class="ak-pdf-spinner"></span>Creating Map...</span>';
 
     try {
       const resolvedTripData = await resolveAllLatLng(currentTrip);
@@ -134,7 +175,8 @@
       showToast('Something went wrong. Please try again.');
     } finally {
       $activeBtn.disabled = false;
-      $activeBtn.innerHTML = originalHTML;
+      $activeBtn.style.minWidth = '';
+      $label.innerHTML = originalHTML;
     }
   }
 
