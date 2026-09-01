@@ -55,7 +55,7 @@ function buildDayFolder(day, tripStartDate) {
       return '';
     }
     const styleId = activity.type || 'default';
-    const label = activity.time ? `${activity.name} (${activity.time})` : activity.name;
+    const label = activity.name;
     return `
     <Placemark>
       <name>${escapeXml(label)}</name>
@@ -87,7 +87,7 @@ function buildChunkedFolder(days, tripStartDate) {
       return '';
     }
     const styleId = activity.type || 'default';
-    const label = activity.time ? `${activity.name} (${activity.time})` : activity.name;
+    const label = activity.name;
     return `
     <Placemark>
       <name>${escapeXml(label)}</name>
