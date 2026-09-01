@@ -118,7 +118,10 @@
   }
 
   function stripTimeTag(name) {
-    return String(name || '').replace(/\s*\((morning|afternoon|evening)\)\s*$/i, '').trim();
+    return String(name || '')
+      .replace(/\s*\((?:morning|afternoon|evening)\)\s*/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function mapSlotActivities(slot, timeLabel, type) {
